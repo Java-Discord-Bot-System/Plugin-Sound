@@ -97,7 +97,7 @@ public class MusicPlayer extends Player {
 			final AudioInputStream aStream = AudioSystem.getAudioInputStream(stream);
 			this.setAudioSource(aStream);
 			this.currentAudioSource = source;
-			this.currentAudioStream = stream;    // We save the stream to be able to call getCurrentTimestamp()
+			this.currentAudioStream = stream;	// We save the stream to be able to call getCurrentTimestamp()
 		} catch (IOException | UnsupportedAudioFileException e) {
 			throw new IllegalArgumentException("MusicPlayer: The AudioSource failed to load!\n" + "-> AudioSource url: " + source.getSource() + "\n" + "-> Error: " + e.getMessage(), e);
 		}

@@ -25,9 +25,9 @@ import com.almightyalpaca.discord.bot.plugin.sound.NativUtil;
 import sun.misc.IOUtils;
 
 public class RemoteSource implements AudioSource {
-	public static final List<String>	YOUTUBE_DL_LAUNCH_ARGS	= Collections.unmodifiableList(Arrays.asList("python", "\"" + NativUtil.getYoutubeDLFile() + "\"", "-q", "-f", "bestaudio/best",
-			"--no-playlist", "-o", "-"));
-	public static final List<String>	FFMPEG_LAUNCH_ARGS		= Collections.unmodifiableList(Arrays.asList("\"" + NativUtil.getFFMPEGFile() + "\"", "-i", "-", "-f", "mp3", "-map", "a", "-"));
+	public static final List<String>	YOUTUBE_DL_LAUNCH_ARGS	= Collections.unmodifiableList(Arrays.asList("python", NativUtil.getYoutubeDLFile(), "-q", "-f", "bestaudio/best", "--no-playlist",
+			"-o", "-"));
+	public static final List<String>	FFMPEG_LAUNCH_ARGS		= Collections.unmodifiableList(Arrays.asList(NativUtil.getFFMPEGFile(), "-i", "-", "-f", "mp3", "-map", "a", "-"));
 
 	private final String				url;
 	private final List<String>			ytdlLaunchArgsF;
@@ -121,7 +121,7 @@ public class RemoteSource implements AudioSource {
 			ffmpegLaunchArgs.addAll(this.ytdlLaunchArgsF);
 		}
 
-		ytdlLaunchArgs.add(this.url);    // specifies the URL to download.
+		ytdlLaunchArgs.add(this.url);	// specifies the URL to download.
 
 		return new AudioStream(this.url, ytdlLaunchArgs, ffmpegLaunchArgs);
 	}
@@ -143,10 +143,10 @@ public class RemoteSource implements AudioSource {
 				infoArgs.addAll(RemoteSource.YOUTUBE_DL_LAUNCH_ARGS);
 			}
 
-			infoArgs.add("--ignore-errors");    // Ignore errors, obviously
-			infoArgs.add("-j");                 // Dumps the json about the file into STDout
-			infoArgs.add("--skip-download");    // Doesn't actually download the file.
-			infoArgs.add(this.url);                  // specifies the URL to download.
+			infoArgs.add("--ignore-errors");	// Ignore errors, obviously
+			infoArgs.add("-j");				 // Dumps the json about the file into STDout
+			infoArgs.add("--skip-download");	// Doesn't actually download the file.
+			infoArgs.add(this.url);				  // specifies the URL to download.
 
 			try {
 				final Process infoProcess = new ProcessBuilder().command(infoArgs).start();

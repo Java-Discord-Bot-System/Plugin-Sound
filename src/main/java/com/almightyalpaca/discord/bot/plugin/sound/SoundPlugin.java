@@ -95,7 +95,7 @@ public class SoundPlugin extends Plugin {
 				final AudioInfo info = SoundPlugin.this.player.getCurrentAudioSource().getInfo();
 
 				builder.appendString("Playing:  ", Formatting.BOLD).appendString(info.getTitle()).newLine();
-				builder.appendString("Time:     ", Formatting.BOLD).appendString(info.getDuration().getTimestamp()).newLine();
+				builder.appendString("Time:	 ", Formatting.BOLD).appendString(info.getDuration().getTimestamp()).newLine();
 
 				limit = Math.min(limit, SoundPlugin.this.player.getAudioQueue().size());
 				final String digits = String.valueOf(String.valueOf(limit).length()); // Get the lenth of limit
@@ -189,7 +189,7 @@ public class SoundPlugin extends Plugin {
 				final AudioInfo info = SoundPlugin.this.player.getCurrentAudioSource().getInfo();
 
 				builder.appendString("Playing:  ", Formatting.BOLD).appendString(info.getTitle()).newLine();
-				builder.appendString("Time:      ", Formatting.BOLD).appendString(info.getDuration().getTimestamp());
+				builder.appendString("Time:	  ", Formatting.BOLD).appendString(info.getDuration().getTimestamp());
 
 				builder.send(event.getChannel());
 			}
