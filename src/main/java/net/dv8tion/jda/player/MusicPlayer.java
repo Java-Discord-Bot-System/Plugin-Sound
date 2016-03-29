@@ -1,261 +1,299 @@
 /**
- * Copyright 2016 Austin Keener Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
- * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ *     Copyright 2016 Austin Keener
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.dv8tion.jda.player;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Random;
 
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
-
 import net.dv8tion.jda.audio.AudioConnection;
-import net.dv8tion.jda.audio.player.Player;
+import net.dv8tion.jda.audio.AudioSendHandler;
 import net.dv8tion.jda.player.source.AudioSource;
 import net.dv8tion.jda.player.source.AudioStream;
 import net.dv8tion.jda.player.source.AudioTimestamp;
 import net.dv8tion.jda.utils.SimpleLog;
 
-/**
- * Created by Austin on 3/8/2016.
- */
-public class MusicPlayer extends Player {
-	protected enum State {
-		PLAYING, PAUSED, STOPPED;
-	}
+public class MusicPlayer implements AudioSendHandler
+{
+    public static final int PCM_FRAME_SIZE = 4;
+    protected LinkedList<AudioSource> audioQueue = new LinkedList<>();
+    protected AudioSource previousAudioSource = null;
+    protected AudioSource currentAudioSource = null;
+    protected AudioStream currentAudioStream = null;
+    protected State state = State.STOPPED;
+    protected boolean autoContinue = true;
+    protected boolean shuffle = false;
+    protected boolean repeat = false;
+    protected float volume = 1.0F;
 
-	protected List<AudioSource>	audioQueue			= Collections.synchronizedList(new LinkedList<>());
-	protected AudioSource		previousAudioSource	= null;
-	protected AudioSource		currentAudioSource	= null;
-	protected AudioStream		currentAudioStream	= null;
-	protected State				state				= State.STOPPED;
-	protected boolean			autoContinue		= true;
-	protected boolean			shuffle				= false;
+    protected enum State
+    {
+        PLAYING, PAUSED, STOPPED;
+    }
 
-	protected boolean			repeat				= false;
+    public void setRepeat(boolean repeat)
+    {
+        this.repeat = repeat;
+    }
 
-	public List<AudioSource> getAudioQueue() {
-		return this.audioQueue;
-	}
+    public boolean isRepeat()
+    {
+        return repeat;
+    }
 
-	public AudioSource getCurrentAudioSource() {
-		return this.currentAudioSource;
-	}
+    public float getVolume()
+    {
+        return this.volume;
+    }
 
-	public AudioTimestamp getCurrentTimestamp() {
-		if (this.currentAudioStream != null) {
-			return this.currentAudioStream.getCurrentTimestamp();
-		} else {
-			return null;
-		}
-	}
+    public void setVolume(float volume)
+    {
+        this.volume = volume;
+    }
 
-	public AudioSource getPreviousAudioSource() {
-		return this.previousAudioSource;
-	}
+    public void setShuffle(boolean shuffle)
+    {
+        this.shuffle = shuffle;
+    }
 
-	@Override
-	public boolean isPaused() {
-		return this.state == State.PAUSED;
-	}
+    public boolean isShuffle()
+    {
+        return shuffle;
+    }
 
-	@Override
-	public boolean isPlaying() {
-		return this.state == State.PLAYING;
-	}
+    public void reload(boolean autoPlay)
+    {
+        reload0(autoPlay, true);
+    }
 
-	public boolean isRepeat() {
-		return this.repeat;
-	}
+    public void skipToNext()
+    {
+        playNext(false);
+        //TODO: fire onSkip
+    }
 
-	public boolean isShuffle() {
-		return this.shuffle;
-	}
+    public LinkedList<AudioSource> getAudioQueue()
+    {
+        return audioQueue;
+    }
 
-	@Override
-	public boolean isStarted() {
-		throw new UnsupportedOperationException("MusicPlayer doesn't support this");
-	}
+    public AudioSource getCurrentAudioSource()
+    {
+        return currentAudioSource;
+    }
 
-	@Override
-	public boolean isStopped() {
-		return this.state == State.STOPPED;
-	}
+    public AudioSource getPreviousAudioSource()
+    {
+        return previousAudioSource;
+    }
 
-	// ============ JDA Player interface overrides =============
+    public AudioTimestamp getCurrentTimestamp()
+    {
+        if (currentAudioStream != null)
+            return currentAudioStream.getCurrentTimestamp();
+        else
+            return null;
+    }
 
-	protected void loadFromSource(final AudioSource source) {
-		try {
-			final AudioStream stream = source.asStream();
-			final AudioInputStream aStream = AudioSystem.getAudioInputStream(stream);
-			this.setAudioSource(aStream);
-			this.currentAudioSource = source;
-			this.currentAudioStream = stream;	// We save the stream to be able to call getCurrentTimestamp()
-		} catch (IOException | UnsupportedAudioFileException e) {
-			throw new IllegalArgumentException("MusicPlayer: The AudioSource failed to load!\n" + "-> AudioSource url: " + source.getSource() + "\n" + "-> Error: " + e.getMessage(), e);
-		}
-	}
+    // ============ JDA Player interface overrides =============
 
-	@Override
-	public void pause() {
-		if (this.state == State.PAUSED) {
-			return;
-		}
+    public void play()
+    {
+        play0(true);
+    }
 
-		if (this.state == State.STOPPED) {
-			throw new IllegalStateException("Cannot pause a stopped player!");
-		}
+    public void pause()
+    {
+        if (state == State.PAUSED)
+            return;
 
-		this.state = State.PAUSED;
-		// TODO: fire onPause
-	}
+        if (state == State.STOPPED)
+            throw new IllegalStateException("Cannot pause a stopped player!");
 
-	@Override
-	public void play() {
-		this.play0(true);
-	}
+        state = State.PAUSED;
+        //TODO: fire onPause
+    }
 
-	protected void play0(final boolean fireEvent) {
-		if (this.state == State.PLAYING) {
-			return;
-		}
+    @Override
+    public boolean canProvide()
+    {
+        return state.equals(State.PLAYING);
+    }
 
-		if (this.currentAudioSource != null) {
-			this.state = State.PLAYING;
-			return;
-		}
+    private byte[] buffer = new byte[AudioConnection.OPUS_FRAME_SIZE * PCM_FRAME_SIZE];
 
-		if (this.audioQueue.isEmpty()) {
-			throw new IllegalStateException("MusicPlayer: The audio queue is empty! Cannot start playing.");
-		}
+    @Override
+    public byte[] provide20MsAudio()
+    {
+//        if (currentAudioStream == null || audioFormat == null)
+//            throw new IllegalStateException("The Audio source was never set for this player!\n" +
+//                    "Please provide an AudioInputStream using setAudioSource.");
+        try
+        {
+            int amountRead = currentAudioStream.read(buffer, 0, buffer.length);
+            if (amountRead > -1)
+            {
+                if (amountRead<buffer.length) {
+                    Arrays.fill(buffer, amountRead, buffer.length - 1, (byte) 0);
+                }
+                if (volume != 1) {
+                    for (int i = 0; i < buffer.length; i+=2) {
+                        short sample = (short) ((buffer[i+1] & 0xff) | (buffer[i] << 8));
+                        sample = (short) (sample * volume);
+                        buffer[i+1] = (byte)(sample & 0xff);
+                        buffer[i] = (byte)((sample >> 8) & 0xff);
+                    }
+                }
+                return buffer;
+            }
+            else
+            {
+                if (autoContinue)
+                {
+                    if(repeat)
+                    {
+                        reload0(true, false);
+                        //TODO: fire onRepeat
+                    }
+                    else
+                    {
+                        playNext(true);
+                    }
+                }
+                else
+                    stop0(true);
+                return null;
+            }
+        }
+        catch (IOException e)
+        {
+            SimpleLog.getLog("JDA-Player").log(e);
+        }
+        return null;
+    }
 
-		this.loadFromSource(this.audioQueue.remove(0));
+    public void stop()
+    {
+        stop0(true);
+    }
 
-		this.state = State.PLAYING;
-		// TODO: fire onPlaying
-	}
+    public boolean isPlaying()
+    {
+        return state == State.PLAYING;
+    }
 
-	protected void playNext(final boolean fireEvent) {
-		if (this.audioQueue.isEmpty()) {
-			this.stop0(false);   // Maybe true?
-			// TODO: fire onFinish
-			return;
-		}
+    public boolean isPaused()
+    {
+        return state == State.PAUSED;
+    }
 
-		this.stop0(false);
-		AudioSource source;
-		if (this.shuffle) {
-			final Random rand = new Random();
-			source = this.audioQueue.remove(rand.nextInt(this.audioQueue.size()));
-		} else {
-			source = this.audioQueue.remove(0);
-		}
-		this.loadFromSource(source);
+    public boolean isStopped()
+    {
+        return state == State.STOPPED;
+    }
 
-		this.play0(false);
-		// TODO: fire onNext
-	}
+    // ========= Internal Functions ==========
 
-	@Override
-	public byte[] provide20MsAudio() {
-		if (this.audioSource == null || this.audioFormat == null) {
-			throw new IllegalStateException("The Audio source was never set for this player!\n" + "Please provide an AudioInputStream using setAudioSource.");
-		}
-		try {
-			int amountRead;
-			final byte[] audio = new byte[AudioConnection.OPUS_FRAME_SIZE * this.audioFormat.getFrameSize()];
-			amountRead = this.audioSource.read(audio, 0, audio.length);
-			if (amountRead > -1) {
-				return audio;
-			} else {
-				if (this.autoContinue) {
-					if (this.repeat) {
-						this.reload0(true, false);
-						// TODO: fire onRepeat
-					} else {
-						this.playNext(true);
-					}
-				} else {
-					this.stop0(true);
-				}
-				return null;
-			}
-		} catch (final IOException e) {
-			SimpleLog.getLog("JDAPlayer").log(e);
-		}
-		return null;
-	}
+    protected void play0(boolean fireEvent)
+    {
+        if (state == State.PLAYING)
+            return;
 
-	public void reload(final boolean autoPlay) {
-		this.reload0(autoPlay, true);
-	}
+        if (currentAudioSource != null)
+        {
+            state = State.PLAYING;
+            return;
+        }
 
-	protected void reload0(final boolean autoPlay, final boolean fireEvent) {
-		if (this.previousAudioSource == null && this.currentAudioSource == null) {
-			throw new IllegalStateException("Cannot restart or reload a player that has never been started!");
-		}
+        if (audioQueue.isEmpty())
+            throw new IllegalStateException("MusicPlayer: The audio queue is empty! Cannot start playing.");
 
-		this.stop0(false);
-		this.loadFromSource(this.previousAudioSource);
+        loadFromSource(audioQueue.removeFirst());
 
-		if (autoPlay) {
-			this.play0(false);
-		}
+        state = State.PLAYING;
+        //TODO: fire onPlaying
+    }
 
-		// TODO: fire onReload
-	}
+    protected void stop0(boolean fireEvent)
+    {
+        if (state == State.STOPPED)
+            return;
 
-	@Override
-	public void restart() {
-		this.reload0(true, true);
-	}
+        state = State.STOPPED;
+        try
+        {
+            currentAudioStream.close();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        finally
+        {
+            previousAudioSource = currentAudioSource;
+            currentAudioSource = null;
+            currentAudioStream = null;
+        }
+        //TODO: fire onStop
+    }
 
-	// ========= Internal Functions ==========
+    protected void reload0(boolean autoPlay, boolean fireEvent)
+    {
+        if (previousAudioSource == null && currentAudioSource == null)
+            throw new IllegalStateException("Cannot restart or reload a player that has never been started!");
 
-	public void setRepeat(final boolean repeat) {
-		this.repeat = repeat;
-	}
+        stop0(false);
+        loadFromSource(previousAudioSource);
 
-	public void setShuffle(final boolean shuffle) {
-		this.shuffle = shuffle;
-	}
+        if (autoPlay)
+            play0(false);
 
-	public void skipToNext() {
-		this.playNext(false);
-		// TODO: fire onSkip
-	}
+        //TODO: fire onReload
+    }
 
-	@Override
-	public void stop() {
-		this.stop0(true);
-	}
+    protected void playNext(boolean fireEvent)
+    {
+        if (audioQueue.isEmpty())
+        {
+            stop0(false);   //Maybe true?
+            //TODO: fire onFinish
+            return;
+        }
 
-	protected void stop0(final boolean fireEvent) {
-		if (this.state == State.STOPPED) {
-			return;
-		}
+        stop0(false);
+        AudioSource source;
+        if (shuffle)
+        {
+            Random rand = new Random();
+            source = audioQueue.remove(rand.nextInt(audioQueue.size()));
+        }
+        else
+            source = audioQueue.removeFirst();
+        loadFromSource(source);
 
-		this.state = State.STOPPED;
-		try {
-			this.amplitudeAudioStream.close();
-			this.audioSource.close();
-			// We don't close currentAudioStream because it is handled by audioSource.close()
-		} catch (final IOException e) {
-			e.printStackTrace();
-		} finally {
-			this.amplitudeAudioStream = null;
-			this.audioSource = null;
-			this.previousAudioSource = this.currentAudioSource;
-			this.currentAudioSource = null;
-			this.currentAudioStream = null;
-		}
-		// TODO: fire onStop
-	}
+        play0(false);
+        //TODO: fire onNext
+    }
+
+    protected void loadFromSource(AudioSource source)
+    {
+        AudioStream stream = source.asStream();
+        currentAudioSource = source;
+        currentAudioStream = stream;
+    }
 }

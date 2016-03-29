@@ -27,6 +27,7 @@ import net.dv8tion.jda.JDA;
 import net.dv8tion.jda.MessageBuilder;
 import net.dv8tion.jda.MessageBuilder.Formatting;
 import net.dv8tion.jda.entities.VoiceChannel;
+import net.dv8tion.jda.player.JDAPlayerConfig;
 import net.dv8tion.jda.player.source.AudioInfo;
 import net.dv8tion.jda.player.source.AudioSource;
 
@@ -220,7 +221,7 @@ public class SoundPlugin extends Plugin {
 		@Command(dm = true, guild = true, priority = 1)
 		public void onCommand(final CommandEvent event, final float f) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.setVolume(Math.min(2, f));
+				SoundPlugin.this.player.setVolume(Math.max(0, Math.min(1, f)));
 			}
 		}
 
@@ -273,8 +274,8 @@ public class SoundPlugin extends Plugin {
 
 		NativUtil.setFolder(new File(this.getPluginFolder(), "cache"));
 
-		NativUtil.getFFMPEGFile();
-		NativUtil.getYoutubeDLFile();
+		JDAPlayerConfig.setFFMPEG_COMMAND(NativUtil.getFFMPEGFile());
+		JDAPlayerConfig.setYOUTUBE_DL_COMMAND(NativUtil.getYoutubeDLFile());
 
 		this.player = new SoundPlayer();
 
