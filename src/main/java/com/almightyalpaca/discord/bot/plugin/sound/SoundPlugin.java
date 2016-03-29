@@ -27,6 +27,7 @@ import net.dv8tion.jda.JDA;
 import net.dv8tion.jda.MessageBuilder;
 import net.dv8tion.jda.MessageBuilder.Formatting;
 import net.dv8tion.jda.entities.VoiceChannel;
+import net.dv8tion.jda.managers.AudioManager;
 import net.dv8tion.jda.player.JDAPlayerConfig;
 import net.dv8tion.jda.player.source.AudioInfo;
 import net.dv8tion.jda.player.source.AudioSource;
@@ -39,7 +40,7 @@ public class SoundPlugin extends Plugin {
 			super("again", "Add the last song to the queue again", "");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.add(SoundPlugin.this.player.getPreviousAudioSource());
@@ -55,10 +56,12 @@ public class SoundPlugin extends Plugin {
 		}
 
 		@Command(dm = false, guild = true, async = true)
-		public void onCommand(final CommandEvent event) { // FIXME don't steel
-			final VoiceChannel channel = event.getGuild().getVoiceStatusOfUser(event.getAuthor()).getChannel();
-			if (channel != null) {
-				event.getJDA().getAudioManager().openAudioConnection(channel);
+		public void onCommand(final CommandEvent event) {
+			if (event.getJDA().getAudioManager().getConnectedChannel() == null) {
+				final VoiceChannel channel = event.getGuild().getVoiceStatusOfUser(event.getAuthor()).getChannel();
+				if (channel != null) {
+					event.getJDA().getAudioManager().openAudioConnection(channel);
+				}
 			}
 		}
 	}
@@ -83,12 +86,12 @@ public class SoundPlugin extends Plugin {
 			super("list", "List the queue", "(limit)");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			this.onCommand(event, Integer.MAX_VALUE);
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event, int limit) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				final MessageBuilder builder = new MessageBuilder();
@@ -119,7 +122,7 @@ public class SoundPlugin extends Plugin {
 			super("pause", "Pause the music", "TODO");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.pause();
@@ -133,14 +136,14 @@ public class SoundPlugin extends Plugin {
 			super("play", "Add something the queue", "[url] OR list [url]");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.play();
 			}
 		}
 
-		@Command(dm = true, guild = true, priority = 1, async = true)
+		@Command(dm = false, guild = true, priority = 1, async = true)
 		public void onCommand(final CommandEvent event, final String list, final URL url) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				if (list.equalsIgnoreCase("list")) {
@@ -168,7 +171,7 @@ public class SoundPlugin extends Plugin {
 			}
 		}
 
-		@Command(dm = true, guild = true, priority = 1, async = true)
+		@Command(dm = false, guild = true, priority = 1, async = true)
 		public void onCommand(final CommandEvent event, final URL url) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.add(url);
@@ -183,7 +186,7 @@ public class SoundPlugin extends Plugin {
 			super("playing", "Show the current song", "");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				final MessageBuilder builder = new MessageBuilder();
@@ -203,7 +206,7 @@ public class SoundPlugin extends Plugin {
 			super("skip", "Skip current Song", "TODO");
 		}
 
-		@Command(dm = true, guild = true, async = true)
+		@Command(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.skipToNext();
@@ -218,14 +221,14 @@ public class SoundPlugin extends Plugin {
 			super("volume", "Set the voume", "TODO");
 		}
 
-		@Command(dm = true, guild = true, priority = 1)
+		@Command(dm = false, guild = true, priority = 1)
 		public void onCommand(final CommandEvent event, final float f) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.setVolume(Math.max(0, Math.min(1, f)));
 			}
 		}
 
-		@Command(dm = true, guild = true, priority = 0)
+		@Command(dm = false, guild = true, priority = 0)
 		public void onCommand(final CommandEvent event, final String s) {
 			if (s.endsWith("%")) {
 				final String percentage = StringUtils.replaceLast(s, "%", "");
@@ -270,6 +273,10 @@ public class SoundPlugin extends Plugin {
 	@Override
 	public void load() throws PluginLoadingException {
 
+		if (!AudioManager.AUDIO_SUPPORTED) {
+			throw new PluginLoadingException();
+		}
+		
 		this.googleConfig = this.getBridge().getSecureConfig("google");
 
 		NativUtil.setFolder(new File(this.getPluginFolder(), "cache"));
