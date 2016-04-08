@@ -9,38 +9,39 @@ import java.util.regex.Pattern;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.almightyalpaca.discord.bot.system.command.AbstractCommand;
-import com.almightyalpaca.discord.bot.system.command.annotation.Command;
+import com.almightyalpaca.discord.bot.system.command.Command;
+import com.almightyalpaca.discord.bot.system.command.CommandHandler;
 import com.almightyalpaca.discord.bot.system.config.Config;
 import com.almightyalpaca.discord.bot.system.config.exception.KeyNotFoundException;
 import com.almightyalpaca.discord.bot.system.config.exception.WrongTypeException;
-import com.almightyalpaca.discord.bot.system.events.CommandEvent;
+import com.almightyalpaca.discord.bot.system.events.commands.CommandEvent;
 import com.almightyalpaca.discord.bot.system.exception.PluginLoadingException;
 import com.almightyalpaca.discord.bot.system.exception.PluginUnloadingException;
 import com.almightyalpaca.discord.bot.system.plugins.Plugin;
 import com.almightyalpaca.discord.bot.system.plugins.PluginInfo;
+import com.almightyalpaca.discord.bot.system.util.MathUtil;
 import com.almightyalpaca.discord.bot.system.util.StringUtils;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
-import net.dv8tion.jda.JDA;
 import net.dv8tion.jda.MessageBuilder;
 import net.dv8tion.jda.MessageBuilder.Formatting;
 import net.dv8tion.jda.entities.VoiceChannel;
 import net.dv8tion.jda.managers.AudioManager;
 import net.dv8tion.jda.player.JDAPlayerConfig;
+import net.dv8tion.jda.player.MusicPlayer;
 import net.dv8tion.jda.player.source.AudioInfo;
 import net.dv8tion.jda.player.source.AudioSource;
 
 public class SoundPlugin extends Plugin {
 
-	public class AgainCommand extends AbstractCommand {
+	public class AgainCommand extends Command {
 
 		public AgainCommand() {
 			super("again", "Add the last song to the queue again", "");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.add(SoundPlugin.this.player.getPreviousAudioSource());
@@ -49,13 +50,13 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class JoinCommand extends AbstractCommand {
+	public class JoinCommand extends Command {
 
 		public JoinCommand() {
 			super("join", "Let's the bot join your channel", "");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (event.getJDA().getAudioManager().getConnectedChannel() == null) {
 				final VoiceChannel channel = event.getGuild().getVoiceStatusOfUser(event.getAuthor()).getChannel();
@@ -66,13 +67,13 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class LeaveCommand extends AbstractCommand {
+	public class LeaveCommand extends Command {
 
 		public LeaveCommand() {
 			super("leave", "Let's the bot join your channel", "");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				event.getJDA().getAudioManager().closeAudioConnection();
@@ -80,18 +81,18 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class ListCommand extends AbstractCommand {
+	public class ListCommand extends Command {
 
 		public ListCommand() {
 			super("list", "List the queue", "(limit)");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			this.onCommand(event, Integer.MAX_VALUE);
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event, int limit) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				final MessageBuilder builder = new MessageBuilder();
@@ -107,7 +108,7 @@ public class SoundPlugin extends Plugin {
 				builder.newLine();
 				builder.appendString("Queue:", Formatting.BOLD).newLine();
 
-				for (int i = 0; i < SoundPlugin.this.player.getAudioQueue().size(); i++) {
+				for (int i = 0; i < limit; i++) {
 					final AudioSource source = SoundPlugin.this.player.getAudioQueue().get(i);
 					builder.appendString("[" + String.format("%0" + digits + "d", i + 1) + "] ", Formatting.BOLD).appendString(source.getInfo().getTitle()).newLine();
 				}
@@ -116,13 +117,13 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class PauseCommand extends AbstractCommand {
+	public class PauseCommand extends Command {
 
 		public PauseCommand() {
 			super("pause", "Pause the music", "TODO");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.pause();
@@ -130,30 +131,29 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class PlayCommand extends AbstractCommand {
+	public class PlayCommand extends Command {
 
 		public PlayCommand() {
 			super("play", "Add something the queue", "[url] OR list [url]");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.play();
 			}
 		}
 
-		@Command(dm = false, guild = true, priority = 1, async = true)
+		@CommandHandler(dm = false, guild = true, priority = 1, async = true)
 		public void onCommand(final CommandEvent event, final String list, final URL url) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				if (list.equalsIgnoreCase("list")) {
 					final String listId = SoundPlugin.this.getPlaylistId(url.toString());
 					if (list != null) {
 						try {
-							System.out.println(listId);
-							final JSONObject response = Unirest.get("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" + listId + "&key="
-									+ SoundPlugin.this.googleConfig.getString("API_KEY")).asJson().getBody().getObject();
-							System.out.println(response.toString());
+							final JSONObject response = Unirest
+								.get("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" + listId + "&key=" + SoundPlugin.this.googleConfig.getString("key"))
+								.asJson().getBody().getObject();
 							for (int i = 0; i < response.getJSONArray("items").length(); i++) {
 								final JSONObject item = response.getJSONArray("items").optJSONObject(i);
 								final JSONObject snippet = item.getJSONObject("snippet");
@@ -171,7 +171,7 @@ public class SoundPlugin extends Plugin {
 			}
 		}
 
-		@Command(dm = false, guild = true, priority = 1, async = true)
+		@CommandHandler(dm = false, guild = true, priority = 1, async = true)
 		public void onCommand(final CommandEvent event, final URL url) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.add(url);
@@ -180,15 +180,18 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class PlayingCommand extends AbstractCommand {
+	public class PlayingCommand extends Command {
 
 		public PlayingCommand() {
 			super("playing", "Show the current song", "");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
+
+				//TODO ▶  🔘 ▬▬▬▬▬▬▬ 0:56 🔊
+
 				final MessageBuilder builder = new MessageBuilder();
 				final AudioInfo info = SoundPlugin.this.player.getCurrentAudioSource().getInfo();
 
@@ -200,13 +203,13 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class SkipCommand extends AbstractCommand {
+	public class SkipCommand extends Command {
 
 		public SkipCommand() {
 			super("skip", "Skip current Song", "TODO");
 		}
 
-		@Command(dm = false, guild = true, async = true)
+		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
 				SoundPlugin.this.player.skipToNext();
@@ -215,20 +218,20 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	public class VolumeCommand extends AbstractCommand {
+	public class VolumeCommand extends Command {
 
 		public VolumeCommand() {
 			super("volume", "Set the voume", "TODO");
 		}
 
-		@Command(dm = false, guild = true, priority = 1)
+		@CommandHandler(dm = false, guild = true, priority = 1)
 		public void onCommand(final CommandEvent event, final float f) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.setVolume(Math.max(0, Math.min(1, f)));
+				SoundPlugin.this.player.setVolume(MathUtil.limit(0, f, 1));
 			}
 		}
 
-		@Command(dm = false, guild = true, priority = 0)
+		@CommandHandler(dm = false, guild = true, priority = 0)
 		public void onCommand(final CommandEvent event, final String s) {
 			if (s.endsWith("%")) {
 				final String percentage = StringUtils.replaceLast(s, "%", "");
@@ -242,11 +245,11 @@ public class SoundPlugin extends Plugin {
 		}
 	}
 
-	private static final PluginInfo	INFO	= new PluginInfo("com.almightyalpaca.discord.bot.plugin.sound", "1.0.0", "Almighty Alpaca", "Sound Plugin", "Music Bot and Soundboard");
+	private static final PluginInfo INFO = new PluginInfo("com.almightyalpaca.discord.bot.plugin.sound", "1.0.0", "Almighty Alpaca", "Sound Plugin", "Music Bot and Soundboard");
 
-	private SoundPlayer				player;
+	private SoundPlayer player;
 
-	private Config					googleConfig;
+	private Config googleConfig;
 
 	public SoundPlugin() {
 		super(SoundPlugin.INFO);
@@ -258,10 +261,6 @@ public class SoundPlugin extends Plugin {
 			return true;
 		}
 		return channel.getUsers().contains(event.getAuthor());
-	}
-
-	public JDA getJDA() {
-		return this.getBridge().getJDA();
 	}
 
 	private String getPlaylistId(final String string) {
@@ -276,8 +275,12 @@ public class SoundPlugin extends Plugin {
 		if (!AudioManager.AUDIO_SUPPORTED) {
 			throw new PluginLoadingException();
 		}
-		
-		this.googleConfig = this.getBridge().getSecureConfig("google");
+
+		this.googleConfig = this.getSharedConfig("google");
+
+		if (googleConfig.getString("key", "Your Key") == "Your Key") {
+			throw new PluginLoadingException("Pls add your google api key to the config");
+		}
 
 		NativUtil.setFolder(new File(this.getPluginFolder(), "cache"));
 
@@ -301,9 +304,9 @@ public class SoundPlugin extends Plugin {
 
 	@Override
 	public void unload() throws PluginUnloadingException {
-		this.getBridge().getJDA().getAudioManager().closeAudioConnection();
-		if (this.getBridge().getJDA().getAudioManager().getSendingHandler() instanceof SoundPlayer) {
-			this.getBridge().getJDA().getAudioManager().setSendingHandler(null);
+		this.getJDA().getAudioManager().closeAudioConnection();
+		if (this.getJDA().getAudioManager().getSendingHandler() instanceof MusicPlayer) {
+			this.getJDA().getAudioManager().setSendingHandler(null);
 		}
 		this.player.shutdown();
 	}

@@ -10,9 +10,9 @@ import be.tarsos.dsp.util.FFMPEGDownloader;
 
 public class NativUtil {
 
-	private static File				folder;
+	private static File folder;
 
-	private static FFMPEGDownloader	downloader;
+	private static FFMPEGDownloader downloader;
 
 	public static String getFFMPEGFile() {
 		if (NativUtil.downloader == null) {

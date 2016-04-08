@@ -8,6 +8,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.util.concurrent.MoreExecutors;
+
 import net.dv8tion.jda.player.MusicPlayer;
 import net.dv8tion.jda.player.source.AudioSource;
 import net.dv8tion.jda.player.source.RemoteSource;
@@ -39,8 +41,7 @@ public class SoundPlayer extends MusicPlayer {
 	}
 
 	public void shutdown() {
-		this.executor.shutdownNow();
-		this.audioQueue.clear();
+		MoreExecutors.shutdownAndAwaitTermination(executor, 10, TimeUnit.SECONDS);
 		this.stop();
 	}
 }

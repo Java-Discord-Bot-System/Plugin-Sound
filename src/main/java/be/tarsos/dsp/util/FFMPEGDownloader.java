@@ -10,18 +10,19 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.logging.Logger;
 
 /**
- * Downloads a static ffmpeg binary for several platforms: Windows x64 and x32 Max OS X x64 Linux x32 and x64 The code tries to determine the correct platform and downloads it to the temporary
- * directory <code>System.getProperty("java.io.tmpdir")</code>. After downloading it makes the binary executable. The location of the downloaded binary is returned by <code>ffmpegBinary();</code>
+ * Downloads a static ffmpeg binary for several platforms: Windows x64 and x32 Max OS X x64 Linux x32 and x64 The code tries to determine the correct platform and downloads it to
+ * the temporary directory <code>System.getProperty("java.io.tmpdir")</code>. After downloading it makes the binary executable. The location of the downloaded binary is returned by
+ * <code>ffmpegBinary();</code>
  * 
  * @author Joren Six
  */
 public class FFMPEGDownloader {
 
-	private static String		url	= "http://0110.be/releases/TarsosDSP/TarsosDSP-static-ffmpeg/";
+	private static String url = "http://0110.be/releases/TarsosDSP/TarsosDSP-static-ffmpeg/";
 
-	private final static Logger	LOG	= Logger.getLogger(FFMPEGDownloader.class.getName());
+	private final static Logger LOG = Logger.getLogger(FFMPEGDownloader.class.getName());
 
-	private final String		ffmpegBinary;
+	private final String ffmpegBinary;
 
 	public FFMPEGDownloader() {
 		this(System.getProperty("java.io.tmpdir"));

@@ -195,7 +195,6 @@ public class RemoteSource implements AudioSource
         {
             byte[] buffer = new byte[1024];
             int amountRead = -1;
-            int i = 0;
             while (!currentThread.isInterrupted() && ((amountRead = input.read(buffer)) > -1))
             {
                 fos.write(buffer, 0, amountRead);
