@@ -41,7 +41,7 @@ public class SoundPlayer extends MusicPlayer {
 	}
 
 	public void shutdown() {
-		MoreExecutors.shutdownAndAwaitTermination(executor, 10, TimeUnit.SECONDS);
+		MoreExecutors.shutdownAndAwaitTermination(this.executor, 10, TimeUnit.SECONDS);
 		this.stop();
 	}
 }

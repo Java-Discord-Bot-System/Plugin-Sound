@@ -26,12 +26,15 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 import net.dv8tion.jda.MessageBuilder;
 import net.dv8tion.jda.MessageBuilder.Formatting;
+import net.dv8tion.jda.audio.AudioSendHandler;
+import net.dv8tion.jda.entities.Guild;
 import net.dv8tion.jda.entities.VoiceChannel;
+import net.dv8tion.jda.entities.impl.JDAImpl;
 import net.dv8tion.jda.managers.AudioManager;
 import net.dv8tion.jda.player.JDAPlayerConfig;
-import net.dv8tion.jda.player.MusicPlayer;
 import net.dv8tion.jda.player.source.AudioInfo;
 import net.dv8tion.jda.player.source.AudioSource;
+import net.dv8tion.jda.player.source.AudioTimestamp;
 
 public class SoundPlugin extends Plugin {
 
@@ -44,8 +47,8 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.add(SoundPlugin.this.player.getPreviousAudioSource());
-				SoundPlugin.this.player.play();
+				SoundPlugin.this.getPlayer(event).add(SoundPlugin.this.getPlayer(event).getPreviousAudioSource());
+				SoundPlugin.this.getPlayer(event).play();
 			}
 		}
 	}
@@ -58,10 +61,10 @@ public class SoundPlugin extends Plugin {
 
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
-			if (event.getJDA().getAudioManager().getConnectedChannel() == null) {
+			if (event.getJDA().getAudioManager(event.getGuild()).getConnectedChannel() == null) {
 				final VoiceChannel channel = event.getGuild().getVoiceStatusOfUser(event.getAuthor()).getChannel();
 				if (channel != null) {
-					event.getJDA().getAudioManager().openAudioConnection(channel);
+					event.getJDA().getAudioManager(event.getGuild()).openAudioConnection(channel);
 				}
 			}
 		}
@@ -76,7 +79,7 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				event.getJDA().getAudioManager().closeAudioConnection();
+				event.getJDA().getAudioManager(event.getGuild()).closeAudioConnection();
 			}
 		}
 	}
@@ -94,26 +97,24 @@ public class SoundPlugin extends Plugin {
 
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event, int limit) {
-			if (SoundPlugin.this.checkAccess(event)) {
-				final MessageBuilder builder = new MessageBuilder();
+			final MessageBuilder builder = new MessageBuilder();
 
-				final AudioInfo info = SoundPlugin.this.player.getCurrentAudioSource().getInfo();
+			final AudioInfo info = SoundPlugin.this.getPlayer(event).getCurrentAudioSource().getInfo();
 
-				builder.appendString("Playing:  ", Formatting.BOLD).appendString(info.getTitle()).newLine();
-				builder.appendString("Time:	 ", Formatting.BOLD).appendString(info.getDuration().getTimestamp()).newLine();
+			builder.appendString("Playing:  ", Formatting.BOLD).appendString(info.getTitle()).newLine();
+			builder.appendString("Time:	 ", Formatting.BOLD).appendString(info.getDuration().getTimestamp()).newLine();
 
-				limit = Math.min(limit, SoundPlugin.this.player.getAudioQueue().size());
-				final String digits = String.valueOf(String.valueOf(limit).length()); // Get the lenth of limit
+			limit = Math.min(limit, SoundPlugin.this.getPlayer(event).getAudioQueue().size());
+			final String digits = String.valueOf(String.valueOf(limit).length()); // Get the lenth of limit
 
-				builder.newLine();
-				builder.appendString("Queue:", Formatting.BOLD).newLine();
+			builder.newLine();
+			builder.appendString("Queue:", Formatting.BOLD).newLine();
 
-				for (int i = 0; i < limit; i++) {
-					final AudioSource source = SoundPlugin.this.player.getAudioQueue().get(i);
-					builder.appendString("[" + String.format("%0" + digits + "d", i + 1) + "] ", Formatting.BOLD).appendString(source.getInfo().getTitle()).newLine();
-				}
-				event.sendMessage(builder);
+			for (int i = 0; i < limit; i++) {
+				final AudioSource source = SoundPlugin.this.getPlayer(event).getAudioQueue().get(i);
+				builder.appendString("[" + String.format("%0" + digits + "d", i + 1) + "] ", Formatting.BOLD).appendString(source.getInfo().getTitle()).newLine();
 			}
+			event.sendMessage(builder);
 		}
 	}
 
@@ -126,7 +127,7 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.pause();
+				SoundPlugin.this.getPlayer(event).pause();
 			}
 		}
 	}
@@ -140,7 +141,7 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.play();
+				SoundPlugin.this.getPlayer(event).play();
 			}
 		}
 
@@ -158,9 +159,9 @@ public class SoundPlugin extends Plugin {
 								final JSONObject item = response.getJSONArray("items").optJSONObject(i);
 								final JSONObject snippet = item.getJSONObject("snippet");
 								final JSONObject resourceId = snippet.getJSONObject("resourceId");
-								SoundPlugin.this.player.add(new URL("https://www.youtube.com/watch?v=" + resourceId.getString("videoId")));
+								SoundPlugin.this.getPlayer(event).add(new URL("https://www.youtube.com/watch?v=" + resourceId.getString("videoId")));
 							}
-							SoundPlugin.this.player.play();
+							SoundPlugin.this.getPlayer(event).play();
 						} catch (WrongTypeException | KeyNotFoundException | UnirestException | MalformedURLException | JSONException e) {
 							e.printStackTrace();
 						}
@@ -174,8 +175,8 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, priority = 1, async = true)
 		public void onCommand(final CommandEvent event, final URL url) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.add(url);
-				SoundPlugin.this.player.play();
+				SoundPlugin.this.getPlayer(event).add(url);
+				SoundPlugin.this.getPlayer(event).play();
 			}
 		}
 	}
@@ -188,18 +189,65 @@ public class SoundPlugin extends Plugin {
 
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
-			if (SoundPlugin.this.checkAccess(event)) {
 
-				//TODO ▶  🔘 ▬▬▬▬▬▬▬ 0:56 🔊
+			final MessageBuilder builder = new MessageBuilder();
 
-				final MessageBuilder builder = new MessageBuilder();
-				final AudioInfo info = SoundPlugin.this.player.getCurrentAudioSource().getInfo();
+			final AudioInfo info = SoundPlugin.this.getPlayer(event).getCurrentAudioSource().getInfo();
+			final AudioTimestamp timestamp = SoundPlugin.this.getPlayer(event).getCurrentTimestamp();
 
-				builder.appendString("Playing:  ", Formatting.BOLD).appendString(info.getTitle()).newLine();
-				builder.appendString("Time:	  ", Formatting.BOLD).appendString(info.getDuration().getTimestamp());
+			final int totalWidth = 25;
 
-				builder.send(event.getChannel());
+			final float volume = SoundPlugin.this.getPlayer(event).getVolume();
+			final boolean playing = SoundPlugin.this.getPlayer(event).isPlaying();
+			final int currentTime = timestamp.getTotalSeconds();
+			final int totalTime = info.getDuration().getTotalSeconds();
+			final int before = currentTime * totalWidth / totalTime;
+			final int after = totalWidth - before - 1;
+
+			builder.appendString(info.getTitle(), Formatting.BOLD).newLine().newLine();
+
+			// arrow_forward or pause_button
+			if (playing) {
+				builder.appendString("\u23F8");
+			} else {
+				builder.appendString("\u25B6");
 			}
+
+			builder.appendString("  ");
+
+			// current time
+			builder.appendString(timestamp.getTimestamp());
+
+			builder.appendString(" ");
+
+			// line
+			for (int i = 0; i < before; i++) {
+				builder.appendString("\u25AC");
+			}
+			builder.appendString("\uD83D\uDD18"); // current position
+			for (int i = 0; i < after; i++) {
+				builder.appendString("\u25AC");
+			}
+
+			builder.appendString(" ");
+
+			// total time
+			builder.appendString(info.getDuration().getTimestamp());
+
+			builder.appendString("  ");
+
+			//Speaker
+			if (volume == 0) {
+				builder.appendString("\uD83D\uDD07");
+			} else if (volume < 0.25) {
+				builder.appendString("\uD83D\uDD08");
+			} else if (volume < 0.5) {
+				builder.appendString("\uD83D\uDD09");
+			} else {
+				builder.appendString("\uD83D\uDD0A");
+			}
+
+			builder.send(event.getChannel());
 		}
 	}
 
@@ -212,8 +260,26 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, async = true)
 		public void onCommand(final CommandEvent event) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.skipToNext();
-				SoundPlugin.this.player.play();
+				SoundPlugin.this.getPlayer(event).skipToNext();
+				SoundPlugin.this.getPlayer(event).play();
+			}
+		}
+	}
+
+	public class StopCommand extends Command {
+
+		public StopCommand() {
+			super("stop", "Stops thge player, clearing the queue and leving the channel", "TODO");
+		}
+
+		@CommandHandler(dm = false, guild = true, async = true)
+		public void onCommand(final CommandEvent event) {
+			if (SoundPlugin.this.checkAccess(event)) {
+				if (event.getGuild().getAudioManager().getSendingHandler() instanceof SoundPlayer) {
+					((SoundPlayer) event.getGuild().getAudioManager().getSendingHandler()).shutdown();
+				}
+				event.getGuild().getAudioManager().setSendingHandler(null);
+				event.getGuild().getAudioManager().closeAudioConnection();
 			}
 		}
 	}
@@ -227,7 +293,7 @@ public class SoundPlugin extends Plugin {
 		@CommandHandler(dm = false, guild = true, priority = 1)
 		public void onCommand(final CommandEvent event, final float f) {
 			if (SoundPlugin.this.checkAccess(event)) {
-				SoundPlugin.this.player.setVolume(MathUtil.limit(0, f, 1));
+				SoundPlugin.this.getPlayer(event).setVolume(MathUtil.limit(0, f, 1));
 			}
 		}
 
@@ -247,8 +313,6 @@ public class SoundPlugin extends Plugin {
 
 	private static final PluginInfo INFO = new PluginInfo("com.almightyalpaca.discord.bot.plugin.sound", "1.0.0", "Almighty Alpaca", "Sound Plugin", "Music Bot and Soundboard");
 
-	private SoundPlayer player;
-
 	private Config googleConfig;
 
 	public SoundPlugin() {
@@ -256,11 +320,28 @@ public class SoundPlugin extends Plugin {
 	}
 
 	public boolean checkAccess(final CommandEvent event) {
-		final VoiceChannel channel = this.getJDA().getAudioManager().getConnectedChannel();
+		final VoiceChannel channel = this.getJDA().getAudioManager(event.getGuild()).getConnectedChannel();
 		if (channel == null) {
 			return true;
 		}
 		return channel.getUsers().contains(event.getAuthor());
+	}
+
+	public SoundPlayer getPlayer(final CommandEvent event) {
+		return this.getPlayer(event.getGuild());
+	}
+
+	public SoundPlayer getPlayer(final Guild guild) {
+		final AudioSendHandler handler = guild.getAudioManager().getSendingHandler();
+		SoundPlayer player;
+		if (handler instanceof SoundPlayer) {
+			player = (SoundPlayer) handler;
+		} else {
+			player = new SoundPlayer();
+			guild.getAudioManager().setSendingHandler(player);
+		}
+		return player;
+
 	}
 
 	private String getPlaylistId(final String string) {
@@ -272,13 +353,13 @@ public class SoundPlugin extends Plugin {
 	@Override
 	public void load() throws PluginLoadingException {
 
-		if (!AudioManager.AUDIO_SUPPORTED) {
+		if (!this.getJDA().isAudioEnabled()) {
 			throw new PluginLoadingException();
 		}
 
 		this.googleConfig = this.getSharedConfig("google");
 
-		if (googleConfig.getString("key", "Your Key") == "Your Key") {
+		if (this.googleConfig.getString("key", "Your Key") == "Your Key") {
 			throw new PluginLoadingException("Pls add your google api key to the config");
 		}
 
@@ -286,10 +367,6 @@ public class SoundPlugin extends Plugin {
 
 		JDAPlayerConfig.setFFMPEG_COMMAND(NativUtil.getFFMPEGFile());
 		JDAPlayerConfig.setYOUTUBE_DL_COMMAND(NativUtil.getYoutubeDLFile());
-
-		this.player = new SoundPlayer();
-
-		this.getJDA().getAudioManager().setSendingHandler(this.player);
 
 		this.registerCommand(new JoinCommand());
 		this.registerCommand(new LeaveCommand());
@@ -300,15 +377,18 @@ public class SoundPlugin extends Plugin {
 		this.registerCommand(new VolumeCommand());
 		this.registerCommand(new PlayingCommand());
 		this.registerCommand(new ListCommand());
+		this.registerCommand(new StopCommand());
 	}
 
 	@Override
 	public void unload() throws PluginUnloadingException {
-		this.getJDA().getAudioManager().closeAudioConnection();
-		if (this.getJDA().getAudioManager().getSendingHandler() instanceof MusicPlayer) {
-			this.getJDA().getAudioManager().setSendingHandler(null);
+		for (final AudioManager manager : ((JDAImpl) this.getJDA()).getAudioManagersMap().values()) {
+			if (manager.getSendingHandler() instanceof SoundPlayer) {
+				((SoundPlayer) manager.getSendingHandler()).shutdown();
+			}
+			manager.setSendingHandler(null);
+			manager.closeAudioConnection();
 		}
-		this.player.shutdown();
 	}
 
 }
